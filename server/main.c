@@ -40,27 +40,36 @@ int main(int argc, char *argv[]){
 		perror("erreur bind socket écoute");
 		exit(1);
 	}
-	// connexion etablie, on envoie le message
 	if (listen(socket_ecoute, 5) == -1) {
 		perror("erreur listen");
 		exit(1);
 	}
-	// on attend la connexion du client
-	lg_addr = sizeof(struct sockaddr_in);
-	socket_service = accept(socket_ecoute,(struct sockaddr *)&addr_client,&lg_addr);
-	if (socket_service == -1) {
-		perror("erreur listen");
-		exit(1);
+
+	while(1) {
+		socket_service = accept(socket_ecoute, (struct sockaddr *)&addr_client,&lg_addr);
+
+		if (socket_service == -1) {
+			perror("erreur listen");
+			exit(1);
+		}
+
+		if (fork() == 0) {
+			// on est dans le fils
+			close(socket_ecoute);
+			nb_octets = read(socket_service, message, TAILLEBUF);
+
+			// affichage du message reçu
+			chaine_recue = (char *)malloc(nb_octets * sizeof(char));
+			memcpy(chaine_recue, message, nb_octets);
+			printf("recu message %s\n", chaine_recue);
+
+			// on envoie la réponse au client
+			write(socket_service, reponse, strlen(reponse)+1);
+
+			exit(0);
+		}
+		close(socket_service);
 	}
-	// la connexion est établie, on attend les données envoyées par le client
-	nb_octets = read(socket_service, message, TAILLEBUF);
-	// affichage du message reçu
-	chaine_recue = (char *)malloc(nb_octets * sizeof(char));
-	memcpy(chaine_recue, message, nb_octets);
-	printf("recu message %s\n", chaine_recue);
-	// on envoie la réponse au client
-	write(socket_service, reponse, strlen(reponse)+1);
-	// on ferme les sockets
 	close(socket_service);
 	close(socket_ecoute);
 }
